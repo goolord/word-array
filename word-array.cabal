@@ -3,30 +3,23 @@ name: word-array
 version: 0.1.0.0
 synopsis:
 
--- A longer description of the package.
--- description:
-homepage:
+description: treat integral types as arrays of smaller integral types
+homepage: https://github.com/goolord/word-array/
 
--- A URL where users can report bugs.
--- bug-reports:
+bug-reports: https://github.com/goolord/word-array/issues
 license: MIT
 license-file: LICENSE
 author: Zachary Churchill
 maintainer: zacharyachurchill@gmail.com
 
--- A copyright notice.
 -- copyright:
 category: Data
 extra-source-files: CHANGELOG.md
 
 library
-  exposed-modules: Data.Word64Array.Word8
+  exposed-modules: 
+      Data.Word64Array.Word8
 
-  -- Modules included in this library but not exported.
-  -- other-modules:
-
-  -- LANGUAGE extensions used by modules in this package.
-  -- other-extensions:
   build-depends: 
     , base >=4.13 && <5.0
     , mono-traversable
@@ -55,3 +48,7 @@ benchmark bench
   default-language: Haskell2010
   hs-source-dirs: bench
   main-is: Main.hs
+
+source-repository head
+  type: git
+  location: https://github.com/goolord/word-array/
