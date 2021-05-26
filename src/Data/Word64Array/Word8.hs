@@ -15,7 +15,7 @@
   , UnboxedTuples
 #-}
 
-module Data.Word64Array.Word8 
+module Data.Word64Array.Word8
   ( WordArray(..)
   , Index(..)
   , toWordArray
@@ -58,7 +58,7 @@ displayWordArray wa = displayWordArrayS wa ""
   displayWordArrayS = showListWith displayHex . toList
 
 {-# INLINE toTuple #-}
-toTuple :: WordArray -> (# Word8, Word8, Word8, Word8, Word8, Word8, Word8, Word8 #)
+toTuple :: WordArray -> (# Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray #)
 toTuple (WordArray !w) = 
   let
     !w7 = w
@@ -81,18 +81,18 @@ toTuple (WordArray !w) =
   #)
 
 {-# INLINE toList #-}
-toList :: WordArray -> [Word8]
+toList :: WordArray -> [Element WordArray]
 toList w =
   let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
   in [w0, w1, w2, w3, w4, w5, w6, w7]
 
-index :: WordArray -> Index -> Word8
+index :: WordArray -> Index -> Element WordArray
 index (WordArray w) (Index i) = 
   let offset = (-8 * i) + 56
   in fromIntegral $ unsafeShiftR w offset
 
 {-# INLINE overIndex #-}
-overIndex :: Int -> (Word8 -> Word8) -> WordArray -> WordArray
+overIndex :: Int -> (Element WordArray -> Element WordArray) -> WordArray -> WordArray
 overIndex i f (WordArray w) =
   let offset = (-8 * i) + 56
       w8 = fromIntegral $ unsafeShiftR w offset
@@ -114,7 +114,7 @@ mask 7 = 0xffffffffffffff00
 mask _ = error "mask"
 
 {-# INLINE iforWordArray #-}
-iforWordArray :: Applicative f => WordArray -> (Int -> Word8 -> f ()) -> f ()
+iforWordArray :: Applicative f => WordArray -> (Int -> Element WordArray -> f ()) -> f ()
 iforWordArray w f =
   let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
   in   f 0 (fromIntegral w0) 
