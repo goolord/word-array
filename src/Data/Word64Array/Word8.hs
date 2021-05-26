@@ -17,12 +17,14 @@
 
 module Data.Word64Array.Word8 
   ( WordArray(..)
+  , Index(..)
   , toWordArray
   , overIndex
   , iforWordArray
   , toList
   , toTuple
   , displayWordArray
+  , index
   ) where
 
 import Data.MonoTraversable
@@ -37,6 +39,17 @@ newtype WordArray = WordArray { fromWordArray :: Word64 }
   deriving (Show, Eq, Ord)
 
 type instance Element WordArray = Word8
+
+newtype Index = Index { getIndex :: Int }
+  deriving (Num, Eq, Ord)
+
+instance Bounded Index where
+  maxBound = 7
+  minBound = 0
+
+{-# INLINE toWordArray #-}
+toWordArray :: Word64 -> WordArray
+toWordArray = WordArray
 
 displayWordArray :: WordArray -> String
 displayWordArray wa = displayWordArrayS wa ""
@@ -73,9 +86,10 @@ toList w =
   let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
   in [w0, w1, w2, w3, w4, w5, w6, w7]
 
-{-# INLINE toWordArray #-}
-toWordArray :: Word64 -> WordArray
-toWordArray = WordArray
+index :: WordArray -> Index -> Word8
+index (WordArray w) (Index i) = 
+  let offset = (-8 * i) + 56
+  in fromIntegral $ unsafeShiftR w offset
 
 {-# INLINE overIndex #-}
 overIndex :: Int -> (Word8 -> Word8) -> WordArray -> WordArray
@@ -147,13 +161,13 @@ instance MonoFoldable WordArray where
       (errorWithoutStackTrace "error in word-array ofoldr1Ex: empty array")
       (ofoldr mf Nothing xs)
     where
-      mf x m = Just (case m of
-                       Nothing -> x
-                       Just y  -> f x y)
+    mf x m = Just $ case m of
+      Nothing -> x
+      Just y  -> f x y
   ofoldl1Ex' f xs = fromMaybe 
       (errorWithoutStackTrace "error in word-array ofoldr1Ex: empty array")
       (ofoldl' mf Nothing xs)
     where
-      mf m y = Just (case m of
-                       Nothing -> y
-                       Just x  -> f x y)
+    mf m y = Just $ case m of
+      Nothing -> y
+      Just x  -> f x y
