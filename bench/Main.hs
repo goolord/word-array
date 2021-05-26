@@ -26,16 +26,11 @@ import Data.Word64Array.Word8
 import Data.Functor.Const
 
 deriving instance NFData (WordArray)
-deriving instance NFData (WordArrayBitwise)
 
 main :: IO ()
 main = do
   defaultMain
-    [ bench "toWordArray" $ nf toWordArray maxBound
-    , bench "fromWordArray" $ nf fromWordArray (toWordArray maxBound)
-    , bench "overIndexBitwise" $ nf (overIndexBitwise 0 (+1)) (WordArrayBitwise maxBound)
-    , bench "overIndex" $ nf (overIndex 0 (+1)) (toWordArray maxBound)
-    , bench "iforWordArrayBitwise" $ nf (flip iforWordArrayBitwise (\i w -> Const $ Sum i)) (WordArrayBitwise maxBound)
+    [ bench "overIndex" $ nf (overIndex 0 (+1)) (toWordArray maxBound)
     , bench "iforWordArray" $ nf (flip iforWordArray (\i w -> Const $ Sum i)) (toWordArray maxBound)
     ]
   putStr "Memory usage :"

@@ -1,8 +1,8 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE
     MagicHash
   , TypeOperators
   , DataKinds
+  , BangPatterns
   , KindSignatures
   , TypeFamilies
   , StandaloneDeriving
@@ -10,60 +10,99 @@
   , TypeApplications
   , ScopedTypeVariables
   , InstanceSigs
+  , BinaryLiterals
+  , RankNTypes
+  , UnboxedTuples
 #-}
 
-{-# LANGUAGE RankNTypes #-}
-module Data.Word64Array.Word8 where
+module Data.Word64Array.Word8 
+  ( WordArray(..)
+  , toWordArray
+  , overIndex
+  , iforWordArray
+  , toList
+  , toTuple
+  , displayWordArray
+  ) where
 
-import Data.Primitive.ByteArray
 import Data.MonoTraversable
 import Data.Word
-import GHC.ST (runST)
 import Data.Primitive
 import Data.Maybe (fromMaybe)
 import Data.Bits
-import GHC.Exts (toList)
+import Numeric (showHex)
+import Text.Show (showListWith)
 
-newtype WordArray        = WordArray ByteArray
-newtype WordArrayBitwise = WordArrayBitwise Word64
+newtype WordArray = WordArray { fromWordArray :: Word64 }
+  deriving (Show, Eq, Ord)
 
-type instance Element WordArray        = Word8
-type instance Element WordArrayBitwise = Word8
+type instance Element WordArray = Word8
 
--- | endienness is platform specific
+displayWordArray :: WordArray -> String
+displayWordArray wa = displayWordArrayS wa ""
+  where
+  displayHex x s = "0x" <> showHex x s
+  displayWordArrayS = showListWith displayHex . toList
+
+{-# INLINE toTuple #-}
+toTuple :: WordArray -> (# Word8, Word8, Word8, Word8, Word8, Word8, Word8, Word8 #)
+toTuple (WordArray !w) = 
+  let
+    !w7 = w
+    !w6 = unsafeShiftR w7 8
+    !w5 = unsafeShiftR w6 8
+    !w4 = unsafeShiftR w5 8
+    !w3 = unsafeShiftR w4 8
+    !w2 = unsafeShiftR w3 8
+    !w1 = unsafeShiftR w2 8
+    !w0 = unsafeShiftR w1 8
+  in 
+  (# fromIntegral w0
+  ,  fromIntegral w1
+  ,  fromIntegral w2
+  ,  fromIntegral w3
+  ,  fromIntegral w4
+  ,  fromIntegral w5
+  ,  fromIntegral w6
+  ,  fromIntegral w7
+  #)
+
+{-# INLINE toList #-}
+toList :: WordArray -> [Word8]
+toList w =
+  let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
+  in [w0, w1, w2, w3, w4, w5, w6, w7]
+
 {-# INLINE toWordArray #-}
 toWordArray :: Word64 -> WordArray
-toWordArray w = WordArray $ runST $ do
-  arr <- newByteArray (sizeOf w)
-  writeByteArray arr 0 w
-  unsafeFreezeByteArray arr
-
-{-# INLINE fromWordArray #-}
-fromWordArray :: WordArray -> Word64
-fromWordArray (WordArray ba) = indexByteArray ba 0
+toWordArray = WordArray
 
 {-# INLINE overIndex #-}
 overIndex :: Int -> (Word8 -> Word8) -> WordArray -> WordArray
-overIndex !i f (WordArray !ba) = WordArray $ runST $ do
-  arr <- newByteArray (sizeOf (undefined :: Word64))
-  copyByteArray arr 0 ba 0 (sizeOf (undefined :: Word64))
-  x <- readByteArray arr i
-  writeByteArray arr i (f x)
-  unsafeFreezeByteArray arr
-
-{-# INLINE overIndexBitwise #-}
-overIndexBitwise :: Int -> (Word8 -> Word8) -> WordArrayBitwise -> WordArrayBitwise
-overIndexBitwise i f (WordArrayBitwise w) =
-  let w8 = fromIntegral $ unsafeShiftR w (8 - (i * 8))
+overIndex i f (WordArray w) =
+  let offset = (-8 * i) + 56
+      w8 = fromIntegral $ unsafeShiftR w offset
       w8' = f w8
       w64 :: Word64
-      w64 = shiftL (fromIntegral w8') (8 - (i * 8))
-  in WordArrayBitwise (w + w64)
+      w64 = unsafeShiftL (fromIntegral w8') offset
+  in WordArray ((w .&. mask i) + w64)
+
+{-# INLINE mask #-}
+mask :: Int -> Word64
+mask 0 = 0x00ffffffffffffff
+mask 1 = 0xff00ffffffffffff
+mask 2 = 0xffff00ffffffffff
+mask 3 = 0xffffff00ffffffff
+mask 4 = 0xffffffff00ffffff
+mask 5 = 0xffffffffff00ffff
+mask 6 = 0xffffffffffff00ff
+mask 7 = 0xffffffffffffff00
+mask _ = error "mask"
 
 {-# INLINE iforWordArray #-}
 iforWordArray :: Applicative f => WordArray -> (Int -> Word8 -> f ()) -> f ()
-iforWordArray (WordArray ba) f =
-  let [!w0,!w1,!w2,!w3,!w4,!w5,!w6,!w7] = toList ba
+iforWordArray w f =
+  let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
   in   f 0 (fromIntegral w0) 
     *> f 1 (fromIntegral w1) 
     *> f 2 (fromIntegral w2) 
@@ -73,29 +112,32 @@ iforWordArray (WordArray ba) f =
     *> f 6 (fromIntegral w6) 
     *> f 7 (fromIntegral w7)
 
-{-# INLINE iforWordArrayBitwise #-}
-iforWordArrayBitwise :: Applicative f => WordArrayBitwise -> (Int -> Word8 -> f ()) -> f ()
-iforWordArrayBitwise (WordArrayBitwise !w) f =
-  let
-    !w0 = w
-    !w1 = unsafeShiftR w0 8
-    !w2 = unsafeShiftR w1 8
-    !w3 = unsafeShiftR w2 8
-    !w4 = unsafeShiftR w3 8
-    !w5 = unsafeShiftR w4 8
-    !w6 = unsafeShiftR w5 8
-    !w7 = unsafeShiftR w6 8
-  in   f 0 (fromIntegral w0) 
-    *> f 1 (fromIntegral w1) 
-    *> f 2 (fromIntegral w2) 
-    *> f 3 (fromIntegral w3) 
-    *> f 4 (fromIntegral w4) 
-    *> f 5 (fromIntegral w5) 
-    *> f 6 (fromIntegral w6) 
-    *> f 7 (fromIntegral w7)
+
+instance MonoFunctor WordArray where
+  omap f w = 
+    let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
+    in WordArray 
+      (                (fromIntegral (f (fromIntegral w0)))
+      .|. unsafeShiftL (fromIntegral (f (fromIntegral w1))) 8
+      .|. unsafeShiftL (fromIntegral (f (fromIntegral w2))) 16
+      .|. unsafeShiftL (fromIntegral (f (fromIntegral w3))) 24
+      .|. unsafeShiftL (fromIntegral (f (fromIntegral w4))) 32
+      .|. unsafeShiftL (fromIntegral (f (fromIntegral w5))) 40
+      .|. unsafeShiftL (fromIntegral (f (fromIntegral w6))) 48
+      .|. unsafeShiftL (fromIntegral (f (fromIntegral w7))) 56
+      )
 
 instance MonoFoldable WordArray where
-  ofoldr f b (WordArray ba) = foldrByteArray f b ba
+  ofoldr f b w =
+    let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
+    in  f (fromIntegral w0) 
+      $ f (fromIntegral w1) 
+      $ f (fromIntegral w2) 
+      $ f (fromIntegral w3) 
+      $ f (fromIntegral w4) 
+      $ f (fromIntegral w5) 
+      $ f (fromIntegral w6) 
+      $ f (fromIntegral w7) b
   ofoldl' f z0 xs = ofoldr f' id xs z0
     where f' x k z = k $! f z x
   ofoldMap f = ofoldr (mappend . f) mempty
