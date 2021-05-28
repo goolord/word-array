@@ -33,7 +33,14 @@ test-suite test
   type: exitcode-stdio-1.0
   hs-source-dirs: test
   main-is: MyLibTest.hs
-  build-depends: base ^>=4.14.1.0
+  build-depends:
+      base
+    , tasty
+    , tasty-quickcheck
+    , QuickCheck
+    , vector
+    , word-array
+    , mono-traversable
 
 benchmark bench
   type: exitcode-stdio-1.0
