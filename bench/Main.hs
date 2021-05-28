@@ -16,9 +16,7 @@
 
 import Test.Tasty.Bench (bench, bgroup, defaultMain, env, nf, nfIO)
 
-import Control.DeepSeq
 import Control.Monad.Primitive
-import Control.Exception
   
 import Data.Word
 import Data.Monoid
@@ -26,10 +24,6 @@ import Data.Word64Array.Word8
 import Data.Functor.Const
 import Data.Foldable (for_)
 import Data.Primitive
-
-import Unsafe.Coerce
-
-deriving instance NFData (WordArray)
 
 main :: IO ()
 main = do
