@@ -15,7 +15,6 @@
 #-}
 
 import Control.Monad.Primitive
-import Data.Foldable (for_)
 import Data.Functor.Identity (Identity(Identity))
 import Data.Primitive
 import Data.Word
@@ -41,9 +40,15 @@ overIndexPA i f arr = do
 
 {-# INLINE iforPrimArray #-}
 iforPrimArray :: (Prim a, PrimMonad m) => MutablePrimArray (PrimState m) a -> (Int -> a -> m ()) -> m ()
-iforPrimArray arr f = for_ [0,1,2,3,4,5,6,7] $ \i -> do
-  v <- readPrimArray arr i
-  f i v
+iforPrimArray arr f = do
+  readPrimArray arr 0 >>= f 0
+  readPrimArray arr 1 >>= f 1
+  readPrimArray arr 2 >>= f 2
+  readPrimArray arr 3 >>= f 3
+  readPrimArray arr 4 >>= f 4
+  readPrimArray arr 5 >>= f 5
+  readPrimArray arr 6 >>= f 6
+  readPrimArray arr 7 >>= f 7
 
 main :: IO ()
 main = do
