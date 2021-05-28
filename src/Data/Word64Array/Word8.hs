@@ -111,18 +111,20 @@ toList w =
 
 {-# INLINE readArray #-}
 readArray :: WordArray -> Index -> Element WordArray
-readArray (WordArray !w) (Index !i) =
+readArray (WordArray !w) !i =
   -- See Note [Representation of WordArray]
-  let offset = -8*i + 56
-  in fromIntegral $ unsafeShiftR w offset
+  fromIntegral $ unsafeShiftR w (offset i)
+
+{-# INLINE offset #-}
+offset :: Index -> Int
+offset !i = (-8 * getIndex i) + 56
 
 {-# INLINE writeArray #-}
 writeArray :: WordArray -> Index -> Element WordArray -> WordArray
 writeArray (WordArray !w) !i !w8 =
   -- See Note [Representation of WordArray]
-  let offset = (-8 * getIndex i) + 56
-      w64 :: Word64
-      w64 = unsafeShiftL (fromIntegral w8) offset
+  let w64 :: Word64
+      w64 = unsafeShiftL (fromIntegral w8) (offset i)
   in WordArray ((w .&. mask i) + w64)
 
 {-# INLINE overIndex #-}
