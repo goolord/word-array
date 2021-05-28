@@ -155,14 +155,20 @@ instance MonoFunctor WordArray where
     in fromTuple (# f w0, f w1, f w2, f w3, f w4, f w5, f w6, f w7 #)
 
 instance MonoFoldable WordArray where
+  {-# INLINE ofoldr #-}
   ofoldr f !b !w =
     let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
     in  f w0 $ f w1 $ f w2 $ f w3 $ f w4 $ f w5 $ f w6 $ f w7 b
+  {-# INLINE ofoldl' #-}
   ofoldl' f z0 xs = ofoldr f' id xs z0
     where f' x k z = k $! f z x
+  {-# INLINE ofoldMap #-}
   ofoldMap f = ofoldr (mappend . f) mempty
+  {-# INLINE onull #-}
   onull _ = False
+  {-# INLINE oelem #-}
   oelem e = ofoldr (\a b -> a == e || b) False
+  {-# INLINE ofoldr1Ex #-}
   ofoldr1Ex f xs = fromMaybe 
       (errorWithoutStackTrace "error in word-array ofoldr1Ex: empty array")
       (ofoldr mf Nothing xs)
@@ -170,6 +176,7 @@ instance MonoFoldable WordArray where
     mf x m = Just $ case m of
       Nothing -> x
       Just y  -> f x y
+  {-# INLINE ofoldl1Ex' #-}
   ofoldl1Ex' f xs = fromMaybe 
       (errorWithoutStackTrace "error in word-array ofoldr1Ex: empty array")
       (ofoldl' mf Nothing xs)
