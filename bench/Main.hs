@@ -24,6 +24,7 @@ import Data.Word64Array.Word8
 import Data.Functor.Const
 import Data.Foldable (for_)
 import Data.Primitive
+import Data.Functor.Identity (Identity(Identity))
 
 main :: IO ()
 main = do
@@ -47,10 +48,10 @@ main = do
     [
       bgroup "word-array"
         [ bench "overIndex" $ nf (overIndex 0 (+1)) someArray
-        , bench "ifor" $ nf (flip iforWordArray (\i w -> Const $ Sum i)) (toWordArray maxBound)
+        , bench "ifor" $ nf (flip iforWordArray (\i w -> i `seq` w `seq` Identity ())) (toWordArray maxBound)
         ]
       , bgroup "prim-array"
         [ env mkPrimArray $ \arr -> bench "overIndex" $ nfIO (overIndexPA 0 (+1) arr)
-        , env mkPrimArray $ \arr -> bench "ifor" $ nfIO (flip iforPrimArray (\i w -> pure ()) arr)
+        , env mkPrimArray $ \arr -> bench "ifor" $ nfIO (flip iforPrimArray (\i w -> i `seq` w `seq` pure ()) arr)
         ]
     ]
