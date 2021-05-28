@@ -23,6 +23,7 @@ module Data.Word64Array.Word8
   , iforWordArray
   , toList
   , toTuple
+  , fromTuple
   , displayWordArray
   , index
   ) where
@@ -83,6 +84,20 @@ toTuple (WordArray !w) =
   ,  fromIntegral w7
   #)
 
+{-# INLINE fromTuple #-}
+fromTuple :: (# Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray #) -> WordArray
+fromTuple (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) =
+    WordArray
+      (                (fromIntegral w7)
+      .|. unsafeShiftL (fromIntegral w6) 8
+      .|. unsafeShiftL (fromIntegral w5) 16
+      .|. unsafeShiftL (fromIntegral w4) 24
+      .|. unsafeShiftL (fromIntegral w3) 32
+      .|. unsafeShiftL (fromIntegral w2) 40
+      .|. unsafeShiftL (fromIntegral w1) 48
+      .|. unsafeShiftL (fromIntegral w0) 56
+      )
+
 {-# INLINE toList #-}
 toList :: WordArray -> [Element WordArray]
 toList w =
@@ -131,18 +146,9 @@ iforWordArray w f =
 
 
 instance MonoFunctor WordArray where
-  omap f w = 
+  omap f w =
     let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
-    in WordArray 
-      (                (fromIntegral (f (fromIntegral w0)))
-      .|. unsafeShiftL (fromIntegral (f (fromIntegral w1))) 8
-      .|. unsafeShiftL (fromIntegral (f (fromIntegral w2))) 16
-      .|. unsafeShiftL (fromIntegral (f (fromIntegral w3))) 24
-      .|. unsafeShiftL (fromIntegral (f (fromIntegral w4))) 32
-      .|. unsafeShiftL (fromIntegral (f (fromIntegral w5))) 40
-      .|. unsafeShiftL (fromIntegral (f (fromIntegral w6))) 48
-      .|. unsafeShiftL (fromIntegral (f (fromIntegral w7))) 56
-      )
+    in fromTuple (# f w0, f w1, f w2, f w3, f w4, f w5, f w6, f w7 #)
 
 instance MonoFoldable WordArray where
   ofoldr f b w =
