@@ -45,10 +45,7 @@ Hence the offset to find the start of the ith Word8 is (-8*i) + 56.
 -}
 
 newtype WordArray = WordArray { fromWordArray :: Word64 }
-  deriving (Eq, Ord, NFData)
-
-instance Show WordArray where
-    show = displayWordArray
+  deriving (Show, Eq, Ord, NFData)
 
 type instance Element WordArray = Word8
 
@@ -121,9 +118,9 @@ readArray (WordArray !w) (Index !i) =
 
 {-# INLINE writeArray #-}
 writeArray :: WordArray -> Index -> Element WordArray -> WordArray
-writeArray (WordArray !w) (Index !i) !w8 =
+writeArray (WordArray !w) !i !w8 =
   -- See Note [Representation of WordArray]
-  let offset = -8*i + 56
+  let offset = (-8 * getIndex i) + 56
       w64 :: Word64
       w64 = unsafeShiftL (fromIntegral w8) offset
   in WordArray ((w .&. mask i) + w64)
@@ -134,7 +131,7 @@ overIndex :: Index -> (Element WordArray -> Element WordArray) -> WordArray -> W
 overIndex !i f !w = writeArray w i $ f $ readArray w i
 
 {-# INLINE mask #-}
-mask :: Int -> Word64
+mask :: Index -> Word64
 mask 0 = 0x00ffffffffffffff
 mask 1 = 0xff00ffffffffffff
 mask 2 = 0xffff00ffffffffff
