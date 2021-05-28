@@ -23,7 +23,6 @@ module Data.Word64Array.Word8
   , writeArray
   , overIndex
   , iforWordArray
-  , ifoldWordArray
   , toList
   , toTuple
   , fromTuple
@@ -35,7 +34,6 @@ import Data.MonoTraversable
 import Data.Word
 import Data.Maybe (fromMaybe)
 import Data.Bits
-import Data.Functor (void)
 import Numeric (showHex)
 import Text.Show (showListWith)
 
@@ -153,19 +151,12 @@ iforWordArray !w f =
   let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
   in   f 0 w0 *> f 1 w1 *> f 2 w2 *> f 3 w3 *> f 4 w4 *> f 5 w5 *> f 6 w6 *> f 7 w7
 
-{-# INLINE ifoldWordArray #-}
-ifoldWordArray :: (Int -> Element WordArray -> b -> b) -> b -> WordArray -> b
-ifoldWordArray f !b !w =
-  let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
-  in  f 0 w0 $ f 1 w1 $ f 2 w2 $ f 3 w3 $ f 4 w4 $ f 5 w5 $ f 6 w6 $ f 7 w7 b
-
 instance MonoFunctor WordArray where
   omap f w =
     let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
     in fromTuple (# f w0, f w1, f w2, f w3, f w4, f w5, f w6, f w7 #)
 
 instance MonoFoldable WordArray where
-  otoList = toList
   ofoldr f !b !w =
     let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
     in  f w0 $ f w1 $ f w2 $ f w3 $ f w4 $ f w5 $ f w6 $ f w7 b
@@ -188,6 +179,3 @@ instance MonoFoldable WordArray where
     mf m y = Just $ case m of
       Nothing -> y
       Just x  -> f x y
-  otraverse_ f !w =
-    let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
-    in void (f w0 *> f w1 *> f w2 *> f w3 *> f w4 *> f w5 *> f w6 *> f w7)
