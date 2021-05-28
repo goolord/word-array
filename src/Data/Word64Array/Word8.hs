@@ -38,6 +38,13 @@ import Data.Functor (void)
 import Numeric (showHex)
 import Text.Show (showListWith)
 
+{- Note [Representation of WordArray]
+WordArray has its constituent Word8s packed in order from *left-to-right*, i.e.
+the first Word8 occupies the most-significant bits.
+
+Hence the offset to find the start of the ith Word8 is (-8*i) + 56.
+-}
+
 newtype WordArray = WordArray { fromWordArray :: Word64 }
   deriving (Eq, Ord)
 
@@ -109,12 +116,14 @@ toList w =
 {-# INLINE readArray #-}
 readArray :: WordArray -> Index -> Element WordArray
 readArray (WordArray !w) (Index !i) =
+  -- See Note [Representation of WordArray]
   let offset = -8*i + 56
   in fromIntegral $ unsafeShiftR w offset
 
 {-# INLINE writeArray #-}
 writeArray :: WordArray -> Index -> Element WordArray -> WordArray
 writeArray (WordArray !w) (Index !i) !w8 =
+  -- See Note [Representation of WordArray]
   let offset = -8*i + 56
       w64 :: Word64
       w64 = unsafeShiftL (fromIntegral w8) offset
