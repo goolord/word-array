@@ -133,17 +133,9 @@ mask _ = error "mask"
 
 {-# INLINE iforWordArray #-}
 iforWordArray :: Applicative f => WordArray -> (Int -> Element WordArray -> f ()) -> f ()
-iforWordArray w f =
+iforWordArray !w f =
   let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
-  in   f 0 (fromIntegral w0) 
-    *> f 1 (fromIntegral w1) 
-    *> f 2 (fromIntegral w2) 
-    *> f 3 (fromIntegral w3) 
-    *> f 4 (fromIntegral w4) 
-    *> f 5 (fromIntegral w5) 
-    *> f 6 (fromIntegral w6) 
-    *> f 7 (fromIntegral w7)
-
+  in   f 0 w0 *> f 1 w1 *> f 2 w2 *> f 3 w3 *> f 4 w4 *> f 5 w5 *> f 6 w6 *> f 7 w7
 
 instance MonoFunctor WordArray where
   omap f w =
@@ -151,16 +143,9 @@ instance MonoFunctor WordArray where
     in fromTuple (# f w0, f w1, f w2, f w3, f w4, f w5, f w6, f w7 #)
 
 instance MonoFoldable WordArray where
-  ofoldr f b w =
+  ofoldr f !b !w =
     let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
-    in  f (fromIntegral w0) 
-      $ f (fromIntegral w1) 
-      $ f (fromIntegral w2) 
-      $ f (fromIntegral w3) 
-      $ f (fromIntegral w4) 
-      $ f (fromIntegral w5) 
-      $ f (fromIntegral w6) 
-      $ f (fromIntegral w7) b
+    in  f w0 $ f w1 $ f w2 $ f w3 $ f w4 $ f w5 $ f w6 $ f w7 b
   ofoldl' f z0 xs = ofoldr f' id xs z0
     where f' x k z = k $! f z x
   ofoldMap f = ofoldr (mappend . f) mempty
