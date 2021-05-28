@@ -36,7 +36,10 @@ import Numeric (showHex)
 import Text.Show (showListWith)
 
 newtype WordArray = WordArray { fromWordArray :: Word64 }
-  deriving (Show, Eq, Ord)
+  deriving (Eq, Ord)
+
+instance Show WordArray where
+    show = displayWordArray
 
 type instance Element WordArray = Word8
 
