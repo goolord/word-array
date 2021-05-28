@@ -19,6 +19,8 @@ module Data.Word64Array.Word8
   ( WordArray(..)
   , Index(..)
   , toWordArray
+  , readArray
+  , writeArray
   , overIndex
   , iforWordArray
   , ifoldWordArray
@@ -26,12 +28,10 @@ module Data.Word64Array.Word8
   , toTuple
   , fromTuple
   , displayWordArray
-  , index
   ) where
 
 import Data.MonoTraversable
 import Data.Word
-import Data.Primitive
 import Data.Maybe (fromMaybe)
 import Data.Bits
 import Data.Functor (void)
@@ -106,20 +106,24 @@ toList w =
   let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
   in [w0, w1, w2, w3, w4, w5, w6, w7]
 
-index :: WordArray -> Index -> Element WordArray
-index (WordArray w) (Index i) = 
-  let offset = (-8 * i) + 56
+{-# INLINE readArray #-}
+readArray :: WordArray -> Index -> Element WordArray
+readArray (WordArray !w) (Index !i) =
+  let offset = -8*i + 56
   in fromIntegral $ unsafeShiftR w offset
 
-{-# INLINE overIndex #-}
-overIndex :: Int -> (Element WordArray -> Element WordArray) -> WordArray -> WordArray
-overIndex i f (WordArray w) =
-  let offset = (-8 * i) + 56
-      w8 = fromIntegral $ unsafeShiftR w offset
-      w8' = f w8
+{-# INLINE writeArray #-}
+writeArray :: WordArray -> Index -> Element WordArray -> WordArray
+writeArray (WordArray !w) (Index !i) !w8 =
+  let offset = -8*i + 56
       w64 :: Word64
-      w64 = unsafeShiftL (fromIntegral w8') offset
+      w64 = unsafeShiftL (fromIntegral w8) offset
   in WordArray ((w .&. mask i) + w64)
+
+{-# INLINE overIndex #-}
+-- | Modify the word at a given index.
+overIndex :: Index -> (Element WordArray -> Element WordArray) -> WordArray -> WordArray
+overIndex !i f !w = writeArray w i $ f $ readArray w i
 
 {-# INLINE mask #-}
 mask :: Int -> Word64
