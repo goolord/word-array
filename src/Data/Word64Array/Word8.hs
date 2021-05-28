@@ -30,6 +30,7 @@ module Data.Word64Array.Word8
   , displayWordArray
   ) where
 
+import Control.DeepSeq
 import Data.MonoTraversable
 import Data.Word
 import Data.Maybe (fromMaybe)
@@ -46,7 +47,7 @@ Hence the offset to find the start of the ith Word8 is (-8*i) + 56.
 -}
 
 newtype WordArray = WordArray { fromWordArray :: Word64 }
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, NFData)
 
 instance Show WordArray where
     show = displayWordArray
@@ -54,7 +55,7 @@ instance Show WordArray where
 type instance Element WordArray = Word8
 
 newtype Index = Index { getIndex :: Int }
-  deriving (Num, Eq, Ord)
+  deriving (Show, Num, Eq, Ord)
 
 instance Bounded Index where
   maxBound = 7
