@@ -19,29 +19,38 @@ module Data.Word64Array.Word8
   ( WordArray(..)
   , Index(..)
   , toWordArray
+  , readArray
+  , writeArray
   , overIndex
   , iforWordArray
   , toList
   , toTuple
+  , fromTuple
   , displayWordArray
-  , index
   ) where
 
+import Control.DeepSeq
 import Data.MonoTraversable
 import Data.Word
-import Data.Primitive
 import Data.Maybe (fromMaybe)
 import Data.Bits
 import Numeric (showHex)
 import Text.Show (showListWith)
 
+{- Note [Representation of WordArray]
+WordArray has its constituent Word8s packed in order from *left-to-right*, i.e.
+the first Word8 occupies the most-significant bits.
+
+Hence the offset to find the start of the ith Word8 is (-8*i) + 56.
+-}
+
 newtype WordArray = WordArray { fromWordArray :: Word64 }
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, NFData)
 
 type instance Element WordArray = Word8
 
 newtype Index = Index { getIndex :: Int }
-  deriving (Num, Eq, Ord)
+  deriving (Show, Num, Eq, Ord)
 
 instance Bounded Index where
   maxBound = 7
@@ -80,29 +89,49 @@ toTuple (WordArray !w) =
   ,  fromIntegral w7
   #)
 
+{-# INLINE fromTuple #-}
+fromTuple :: (# Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray, Element WordArray #) -> WordArray
+fromTuple (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) =
+    WordArray
+      (                (fromIntegral w7)
+      .|. unsafeShiftL (fromIntegral w6) 8
+      .|. unsafeShiftL (fromIntegral w5) 16
+      .|. unsafeShiftL (fromIntegral w4) 24
+      .|. unsafeShiftL (fromIntegral w3) 32
+      .|. unsafeShiftL (fromIntegral w2) 40
+      .|. unsafeShiftL (fromIntegral w1) 48
+      .|. unsafeShiftL (fromIntegral w0) 56
+      )
+
 {-# INLINE toList #-}
 toList :: WordArray -> [Element WordArray]
 toList w =
   let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
   in [w0, w1, w2, w3, w4, w5, w6, w7]
 
-index :: WordArray -> Index -> Element WordArray
-index (WordArray w) (Index i) = 
-  let offset = (-8 * i) + 56
+{-# INLINE readArray #-}
+readArray :: WordArray -> Index -> Element WordArray
+readArray (WordArray !w) (Index !i) =
+  -- See Note [Representation of WordArray]
+  let offset = -8*i + 56
   in fromIntegral $ unsafeShiftR w offset
 
-{-# INLINE overIndex #-}
-overIndex :: Int -> (Element WordArray -> Element WordArray) -> WordArray -> WordArray
-overIndex i f (WordArray w) =
-  let offset = (-8 * i) + 56
-      w8 = fromIntegral $ unsafeShiftR w offset
-      w8' = f w8
+{-# INLINE writeArray #-}
+writeArray :: WordArray -> Index -> Element WordArray -> WordArray
+writeArray (WordArray !w) !i !w8 =
+  -- See Note [Representation of WordArray]
+  let offset = (-8 * getIndex i) + 56
       w64 :: Word64
-      w64 = unsafeShiftL (fromIntegral w8') offset
+      w64 = unsafeShiftL (fromIntegral w8) offset
   in WordArray ((w .&. mask i) + w64)
 
+{-# INLINE overIndex #-}
+-- | Modify the word at a given index.
+overIndex :: Index -> (Element WordArray -> Element WordArray) -> WordArray -> WordArray
+overIndex !i f !w = writeArray w i $ f $ readArray w i
+
 {-# INLINE mask #-}
-mask :: Int -> Word64
+mask :: Index -> Word64
 mask 0 = 0x00ffffffffffffff
 mask 1 = 0xff00ffffffffffff
 mask 2 = 0xffff00ffffffffff
@@ -115,42 +144,20 @@ mask _ = error "mask"
 
 {-# INLINE iforWordArray #-}
 iforWordArray :: Applicative f => WordArray -> (Int -> Element WordArray -> f ()) -> f ()
-iforWordArray w f =
+iforWordArray !w f =
   let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
-  in   f 0 (fromIntegral w0) 
-    *> f 1 (fromIntegral w1) 
-    *> f 2 (fromIntegral w2) 
-    *> f 3 (fromIntegral w3) 
-    *> f 4 (fromIntegral w4) 
-    *> f 5 (fromIntegral w5) 
-    *> f 6 (fromIntegral w6) 
-    *> f 7 (fromIntegral w7)
+  in   f 0 w0 *> f 1 w1 *> f 2 w2 *> f 3 w3 
+    *> f 4 w4 *> f 5 w5 *> f 6 w6 *> f 7 w7
 
 instance MonoFunctor WordArray where
-  omap f w = 
+  omap f w =
     let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
-    in WordArray 
-      (                (fromIntegral (f (fromIntegral w0)))
-      .|. unsafeShiftL (fromIntegral (f (fromIntegral w1))) 8
-      .|. unsafeShiftL (fromIntegral (f (fromIntegral w2))) 16
-      .|. unsafeShiftL (fromIntegral (f (fromIntegral w3))) 24
-      .|. unsafeShiftL (fromIntegral (f (fromIntegral w4))) 32
-      .|. unsafeShiftL (fromIntegral (f (fromIntegral w5))) 40
-      .|. unsafeShiftL (fromIntegral (f (fromIntegral w6))) 48
-      .|. unsafeShiftL (fromIntegral (f (fromIntegral w7))) 56
-      )
+    in fromTuple (# f w0, f w1, f w2, f w3, f w4, f w5, f w6, f w7 #)
 
 instance MonoFoldable WordArray where
-  ofoldr f b w =
+  ofoldr f !b !w =
     let (# !w0, !w1, !w2, !w3, !w4, !w5, !w6, !w7 #) = toTuple w
-    in  f (fromIntegral w0) 
-      $ f (fromIntegral w1) 
-      $ f (fromIntegral w2) 
-      $ f (fromIntegral w3) 
-      $ f (fromIntegral w4) 
-      $ f (fromIntegral w5) 
-      $ f (fromIntegral w6) 
-      $ f (fromIntegral w7) b
+    in  f w0 $ f w1 $ f w2 $ f w3 $ f w4 $ f w5 $ f w6 $ f w7 b
   ofoldl' f z0 xs = ofoldr f' id xs z0
     where f' x k z = k $! f z x
   ofoldMap f = ofoldr (mappend . f) mempty

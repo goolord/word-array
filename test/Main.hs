@@ -13,14 +13,25 @@
 
 module Main where
 
-import Test.Tasty
 -- import Test.Tasty.HUnit
-import Test.Tasty.QuickCheck
-import Test.QuickCheck.Classes
+import Data.MonoTraversable
 import Data.Proxy
+import Data.Vector
+import Data.Word
+import Data.Word64Array.Word8 as WordArray
+import Test.QuickCheck
+import Test.QuickCheck.Classes
+import Test.Tasty
+import Test.Tasty.QuickCheck
 import qualified Data.Word64Array.Word8 as W64A
-
 deriving instance Arbitrary W64A.WordArray
+
+toVector :: WordArray -> Vector Word8
+toVector = fromList . WordArray.toList
+
+instance Arbitrary Index where
+  arbitrary = Index <$> choose (0, 7)
+  shrink (Index i) = if i == 0 then [] else [Index (i-1)]
 
 main :: IO ()
 main = do
@@ -33,7 +44,14 @@ tests =
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests"
-  [
+  [ testGroup "word-array" [
+        testProperty "write" $ \(arr, ix@(Index i), w8) ->
+            toVector (writeArray arr ix w8) == toVector arr // [(i, w8)]
+        , testProperty "read" $ \(arr, ix@(Index i)) ->
+            readArray arr ix == toVector arr ! i
+        , testProperty "fold" $ \arr ->
+            ofoldr (+) 0 arr == Prelude.foldr (+) 0 (toVector arr)
+    ]
   ]
 
 w64w8Laws :: [Laws]
