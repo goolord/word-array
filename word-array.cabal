@@ -17,7 +17,7 @@ category: Data
 extra-source-files: CHANGELOG.md
 
 library
-  exposed-modules: 
+  exposed-modules:
       Data.Word64Array.Word8
 
   build-depends: 
