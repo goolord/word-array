@@ -1,9 +1,11 @@
 cabal-version: 2.4
 name: word-array
 version: 0.1.0.0
-synopsis:
+synopsis: treat integral types as arrays of smaller integral types
 
-description: treat integral types as arrays of smaller integral types
+description: treat integral types as arrays of smaller integral types.
+  mostly a collection of bitwise operations. you can, for instance,
+  split a @Word64@ into 8 @Word8@s
 homepage: https://github.com/goolord/word-array/
 
 bug-reports: https://github.com/goolord/word-array/issues
